@@ -1,0 +1,35 @@
+# Dart / Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+**/doc/api/
+**/linux/flutter/ephemeral/
+**/ios/Flutter/.last_build_id
+
+# Código generado desde protos/ (se regenera con tool/generate_protos)
+lib/src/generated/*
+!lib/src/generated/.gitkeep
+
+# Símbolos y mapas de builds ofuscados
+app.*.symbols
+app.*.map.json
+
+# Editores
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+
+# Sistema operativo y logs
+.DS_Store
+Thumbs.db
+*.log

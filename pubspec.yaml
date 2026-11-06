@@ -1,0 +1,29 @@
+name: streamchat_desktop
+description: Cliente de escritorio para el servicio ChatHub (Twitch + Kick) vía gRPC.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # gRPC + protobuf. Las versiones deben coincidir con el protoc_plugin
+  # usado para generar el código (protoc_plugin 22.x -> protobuf 4.x).
+  grpc: ^4.0.4
+  protobuf: ^4.1.0
+  fixnum: ^1.1.0
+  # Recordar el último servicio encontrado.
+  shared_preferences: ^2.3.2
+  # Autodetección opcional en la red local (mDNS / Bonjour).
+  multicast_dns: ^0.3.2+7
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
