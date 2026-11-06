@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../generated/streamchat.pbgrpc.dart' as pb;
 import '../../models/chat_line.dart';
 import '../theme.dart';
 
@@ -45,7 +46,8 @@ class _MessageTileState extends State<MessageTile> {
         margin: const EdgeInsets.fromLTRB(12, 1, 12, 1),
         decoration: BoxDecoration(
           color: _hover ? Palette.hover : null,
-          border: Border(left: BorderSide(color: platformColor(l.platform), width: 3)),
+          border: Border(
+              left: BorderSide(color: platformColor(l.platform), width: 3)),
         ),
         padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
         child: Row(
@@ -81,16 +83,18 @@ class _MessageTileState extends State<MessageTile> {
                         ),
                       TextSpan(
                         text: l.username,
-                        style: TextStyle(color: nameColor, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            color: nameColor, fontWeight: FontWeight.w600),
                       ),
                       const TextSpan(text: ': '),
                       l.deleted
                           ? const TextSpan(
                               text: 'mensaje eliminado',
                               style: TextStyle(
-                                  color: Palette.muted, fontStyle: FontStyle.italic),
+                                  color: Palette.muted,
+                                  fontStyle: FontStyle.italic),
                             )
-                          : TextSpan(text: l.text),
+                          : TextSpan(children: _messageContent(l)),
                     ]),
                     style: const TextStyle(fontSize: 14, height: 1.45),
                   ),
@@ -117,6 +121,69 @@ class _MessageTileState extends State<MessageTile> {
     );
   }
 
+  List<InlineSpan> _messageContent(ChatLine line) {
+    if (line.fragments.isEmpty) return [TextSpan(text: line.text)];
+
+    return line.fragments.map((fragment) {
+      switch (fragment.whichKind()) {
+        case pb.MessageFragment_Kind.text:
+          return TextSpan(text: fragment.text);
+        case pb.MessageFragment_Kind.emote:
+          final emote = fragment.emote;
+          return _networkImageSpan(
+            url: emote.imageUrl,
+            fallback: emote.name,
+            tooltip: emote.name,
+          );
+        case pb.MessageFragment_Kind.mention:
+          return TextSpan(
+            text: '@${fragment.mention.username}',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          );
+        case pb.MessageFragment_Kind.cheermote:
+          final cheer = fragment.cheermote;
+          return TextSpan(
+            text: '${cheer.prefix}${cheer.bits}',
+            style: const TextStyle(
+              color: Color(0xFFB794F4),
+              fontWeight: FontWeight.w700,
+            ),
+          );
+        case pb.MessageFragment_Kind.gif:
+          final gif = fragment.gif;
+          return _networkImageSpan(
+            url: gif.url,
+            fallback: '[GIF]',
+            tooltip: 'GIF',
+          );
+        case pb.MessageFragment_Kind.notSet:
+          return const TextSpan();
+      }
+    }).toList(growable: false);
+  }
+
+  InlineSpan _networkImageSpan({
+    required String url,
+    required String fallback,
+    required String tooltip,
+  }) {
+    if (url.isEmpty) return TextSpan(text: fallback);
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: Tooltip(
+        message: tooltip,
+        child: Image.network(
+          url,
+          width: 28,
+          height: 28,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, __, ___) => Text(fallback),
+        ),
+      ),
+    );
+  }
+
   Widget _event(ChatLine l) {
     final color = platformColor(l.platform);
     return Container(
@@ -132,7 +199,8 @@ class _MessageTileState extends State<MessageTile> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(l.text,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           ),
           Text(
             widget.showChannel
@@ -151,7 +219,8 @@ class _MessageTileState extends State<MessageTile> {
       padding: const EdgeInsets.fromLTRB(10, 4, 0, 4),
       decoration: BoxDecoration(
         border: Border(
-          left: BorderSide(color: platformColor(l.platform).withAlpha(90), width: 3),
+          left: BorderSide(
+              color: platformColor(l.platform).withAlpha(90), width: 3),
         ),
       ),
       child: Row(
@@ -162,7 +231,9 @@ class _MessageTileState extends State<MessageTile> {
             child: Text(
               '${formatTime(l.timestamp)}  ${l.channelName}: ${l.text}',
               style: const TextStyle(
-                  color: Palette.muted, fontStyle: FontStyle.italic, fontSize: 13),
+                  color: Palette.muted,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 13),
             ),
           ),
         ],
@@ -199,7 +270,8 @@ class _Badge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(label,
-          style: const TextStyle(fontSize: 11, color: Palette.muted, height: 1.3)),
+          style:
+              const TextStyle(fontSize: 11, color: Palette.muted, height: 1.3)),
     );
   }
 }

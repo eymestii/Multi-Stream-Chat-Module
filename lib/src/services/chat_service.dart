@@ -75,7 +75,9 @@ class ChatService extends ChangeNotifier {
 
   /// Líneas visibles según el filtro de plataformas, de la más vieja a la más nueva.
   List<ChatLine> get lines => _cache ??= List.unmodifiable(
-        _visible.length == 2 ? _lines : _lines.where((l) => _visible.contains(l.platform)),
+        _visible.length == 2
+            ? _lines
+            : _lines.where((l) => _visible.contains(l.platform)),
       );
 
   // ---------------------------------------------------------------- conexión
@@ -92,7 +94,8 @@ class ChatService extends ChangeNotifier {
   /// Conecta a una dirección concreta. Lanza un error si ahí no hay un ChatHub.
   Future<void> connectTo(Endpoint e) async {
     _retryTimer?.cancel();
-    final ch = await ServiceDiscovery.probe(e, timeout: const Duration(seconds: 2));
+    final ch =
+        await ServiceDiscovery.probe(e, timeout: const Duration(seconds: 2));
     if (ch == null) {
       throw Exception('No hay un servicio ChatHub respondiendo en $e.');
     }
@@ -126,7 +129,8 @@ class ChatService extends ChangeNotifier {
   Future<void> _connect(Endpoint e) async {
     _teardown();
     _endpoint = e;
-    _setStatus(_attempt == 0 ? ServiceStatus.connecting : ServiceStatus.reconnecting);
+    _setStatus(
+        _attempt == 0 ? ServiceStatus.connecting : ServiceStatus.reconnecting);
 
     final grpcChannel = ClientChannel(
       e.host,
@@ -167,7 +171,8 @@ class ChatService extends ChangeNotifier {
 
     _attempt = 0;
     _lastError = null;
-    _channelsTimer = Timer.periodic(const Duration(seconds: 30), (_) => refreshChannels());
+    _channelsTimer =
+        Timer.periodic(const Duration(seconds: 30), (_) => refreshChannels());
     _setStatus(ServiceStatus.connected);
   }
 
@@ -236,7 +241,11 @@ class ChatService extends ChangeNotifier {
     _channels = list.toList()
       ..sort((a, b) {
         final p = a.platform.value.compareTo(b.platform.value);
-        return p != 0 ? p : channelLabel(a).toLowerCase().compareTo(channelLabel(b).toLowerCase());
+        return p != 0
+            ? p
+            : channelLabel(a)
+                .toLowerCase()
+                .compareTo(channelLabel(b).toLowerCase());
       });
     if (channelByKey(_selectedKey) == null) {
       _selectedKey = _channels.isEmpty ? null : channelKeyOf(_channels.first);
@@ -302,7 +311,7 @@ class ChatService extends ChangeNotifier {
     // o mensaje propio no entregado por la plataforma).
     final now = DateTime.now();
     final msgId = res.messageId.isNotEmpty ? res.messageId : '';
-    _lines.add(ChatLine(
+    final localLine = ChatLine(
       id: msgId,
       platform: channel.platform,
       channelKey: channelKeyOf(channel),
@@ -312,7 +321,12 @@ class ChatService extends ChangeNotifier {
       text: text,
       username: '',
       messageId: msgId.isNotEmpty ? msgId : null,
-    ));
+    );
+    // El webhook puede llegar antes que la respuesta de SendMessage. En ese
+    // caso ya existe la versión completa con usuario, badges y fragmentos.
+    if (!_hasMessage(localLine)) {
+      _lines.add(localLine);
+    }
     _cache = null;
     notifyListeners();
   }
@@ -335,10 +349,12 @@ class ChatService extends ChangeNotifier {
     for (final u in _pending) {
       switch (u) {
         case AddLine(:final line):
-          _lines.add(line);
+          _addOrReplaceLine(line);
         case DeleteMessage(:final channelKey, :final messageId):
           for (final l in _lines) {
-            if (l.channelKey == channelKey && l.messageId == messageId) l.deleted = true;
+            if (l.channelKey == channelKey && l.messageId == messageId) {
+              l.deleted = true;
+            }
           }
         case ClearChannel(:final channelKey, :final notice):
           _lines.removeWhere((l) => l.channelKey == channelKey);
@@ -347,9 +363,37 @@ class ChatService extends ChangeNotifier {
     }
     _pending.clear();
 
-    if (_lines.length > maxLines) _lines.removeRange(0, _lines.length - maxLines);
+    if (_lines.length > maxLines) {
+      _lines.removeRange(0, _lines.length - maxLines);
+    }
     _cache = null;
     notifyListeners();
+  }
+
+  bool _hasMessage(ChatLine candidate) {
+    final messageId = candidate.messageId;
+    if (messageId == null || messageId.isEmpty) return false;
+    return _lines.any((line) =>
+        line.platform == candidate.platform &&
+        line.channelKey == candidate.channelKey &&
+        line.messageId == messageId);
+  }
+
+  void _addOrReplaceLine(ChatLine incoming) {
+    final messageId = incoming.messageId;
+    if (messageId != null && messageId.isNotEmpty) {
+      final index = _lines.indexWhere((line) =>
+          line.platform == incoming.platform &&
+          line.channelKey == incoming.channelKey &&
+          line.messageId == messageId);
+      if (index >= 0) {
+        // Conserva el evento de plataforma, que contiene usuario, badges,
+        // respuesta y fragmentos enriquecidos que la copia local no conoce.
+        _lines[index] = incoming;
+        return;
+      }
+    }
+    _lines.add(incoming);
   }
 
   @override

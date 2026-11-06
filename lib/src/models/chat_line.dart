@@ -29,6 +29,7 @@ class ChatLine {
     this.messageId,
     this.replyTo,
     this.eventType,
+    this.fragments = const [],
   });
 
   final String id;
@@ -53,6 +54,9 @@ class ChatLine {
   /// follow, subscription, raid… (solo para kind == event / notice).
   final String? eventType;
 
+  /// Fragmentos enriquecidos del mensaje: texto, emotes, menciones, cheers y GIFs.
+  final List<pb.MessageFragment> fragments;
+
   /// Se marca cuando llega un MessageDeleted para este mensaje.
   bool deleted = false;
 }
@@ -65,8 +69,9 @@ String platformSlug(pb.Platform p) {
 
 String channelKeyOf(pb.Channel c) => '${platformSlug(c.platform)}:${c.id}';
 
-String channelLabel(pb.Channel c) =>
-    c.displayName.isNotEmpty ? c.displayName : (c.slug.isNotEmpty ? c.slug : c.id);
+String channelLabel(pb.Channel c) => c.displayName.isNotEmpty
+    ? c.displayName
+    : (c.slug.isNotEmpty ? c.slug : c.id);
 
 Color? parseHexColor(String? hex) {
   if (hex == null || hex.isEmpty) return null;
